@@ -2,6 +2,37 @@ import XCTest
 @testable import GPTNiangCore
 
 final class BusinessAndLanguageTests: XCTestCase {
+    func testCharacterClickActionsCycleQuotaQuoteChat() {
+        XCTAssertEqual(CharacterAction.quota.next, .quote)
+        XCTAssertEqual(CharacterAction.quote.next, .chat)
+        XCTAssertEqual(CharacterAction.chat.next, .quota)
+        XCTAssertTrue(CharacterAction.quota.closesChatWindow)
+        XCTAssertTrue(CharacterAction.quote.closesChatWindow)
+        XCTAssertFalse(CharacterAction.chat.closesChatWindow)
+        XCTAssertEqual(CharacterAction.allCases.map(\.title), ["查看额度", "查看语录", "打开聊天"])
+    }
+
+    func testProactiveChatPolicyEnforcesIdleIntervalDailyCapQuietHoursAndQuotaSafety() {
+        XCTAssertTrue(ProactiveChatPolicy.isQuietTime(minuteOfDay: 23 * 60, start: 23 * 60, end: 8 * 60))
+        XCTAssertTrue(ProactiveChatPolicy.isQuietTime(minuteOfDay: 7 * 60 + 59, start: 23 * 60, end: 8 * 60))
+        XCTAssertFalse(ProactiveChatPolicy.isQuietTime(minuteOfDay: 8 * 60, start: 23 * 60, end: 8 * 60))
+        XCTAssertFalse(ProactiveChatPolicy.quotaIsSafe(remaining: [100, 15], verified: true))
+        XCTAssertFalse(ProactiveChatPolicy.quotaIsSafe(remaining: [100], verified: false))
+        XCTAssertTrue(ProactiveChatPolicy.quotaIsSafe(remaining: [100, 15.1], verified: true))
+        let ready: (Int, TimeInterval?, Int, Bool) -> Bool = { count, sinceLast, minute, quota in
+            ProactiveChatPolicy.shouldSend(enabled: true, dailyCount: count, dailyLimit: 4, idleFor: 1800,
+                                           sinceLastMessage: sinceLast, minuteOfDay: minute, quietStart: 1380,
+                                           quietEnd: 480, quotaSafe: quota, chatBusy: false, chatVisible: false,
+                                           settingsVisible: false, speedVisible: false)
+        }
+        XCTAssertTrue(ready(0, nil, 12 * 60, true))
+        XCTAssertTrue(ready(3, nil, 12 * 60, true))
+        XCTAssertFalse(ready(4, nil, 12 * 60, true))
+        XCTAssertFalse(ready(0, 1799, 12 * 60, true))
+        XCTAssertFalse(ready(0, nil, 12 * 60, false))
+        XCTAssertFalse(ready(0, nil, 23 * 60 + 5, true))
+    }
+
     func testWeightedEditorRoundTripAndInvalidWeights() {
         let quotes = [Quote(text: "繁體語錄", weight: 3.5), Quote(text: "A | B")]
         XCTAssertEqual(QuoteFile.editorQuotes(QuoteFile.editorText(quotes)), quotes)
