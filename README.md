@@ -1,18 +1,24 @@
 # GPT-Niang（GPT 娘）
 
+> **个人 fork / 衍生版本**：上游项目由 [T7moris](https://github.com/T7moris) 创建并维护，源仓库为 [T7moris/GPT-Niang](https://github.com/T7moris/GPT-Niang)。本 fork 由 [Calvin-bot-ui](https://github.com/Calvin-bot-ui) 维护，保留上游 MIT 代码许可证、版权声明及角色素材和语录的独立许可说明。这里列出的定制功能由 fork 维护者在上游基础上开发；不代表上游作者背书。
+
+本 fork 的主要改动：macOS GPT 娘新增 Codex 桌面聊天和流式回复、本地短期聊天记录与长期记忆、人设编辑面板、额度／语录／聊天循环切换、主动闲聊（每日最多 4 次、免打扰时段及额度保护），并在聊天生成时阻止自动更新打断回复。具体功能以本仓库代码和 [macOS 使用说明](macos/README.md) 为准。发布安装包前请先通过本 fork 的 GitHub Releases 发布经过验证的资产；在此之前，本仓库提供的是源码。
+
 让一只白发紫瞳的小龙娘，陪你看 Codex 的剩余额度。
 
 **Windows / macOS 桌面挂件 · 自动识别套餐与额度窗口 · 中文语录 · 当前正式版 1.3.4**
 
 1.3.4 按 PR #20 的只移动窗口方案整合 Windows DPI 修复，并补齐 Business 个人额度的双平台兼容。交互以 Windows 为基准：Mac 连续点击不再打开设置，支持相同的大小范围、桌面置顶开关和独立位置保存；保留 SwiftUI／AppKit 原生实现及双平台自动更新、回滚与历史版本清理。
 
-[**下载最新版**](https://github.com/T7moris/GPT-Niang/releases/latest) · [Windows 安装](#windows-安装) · [macOS 安装](#macos-安装) · [更新记录](更新记录.md) · [反馈问题](https://github.com/T7moris/GPT-Niang/issues/new)
+[**下载最新版**](https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest) · [Windows 安装](#windows-安装) · [macOS 安装](#macos-安装) · [更新记录](更新记录.md) · [反馈问题](https://github.com/T7moris/GPT-Niang/issues/new)
 
 <img src="gpt-niang-usage/assets/gpt-dragon-niang-bust.png" alt="无嘴巴的白发龙娘半身形象" width="240">
 
 ## 能做什么
 
-- **点角色看额度**：按接口实际返回的窗口显示剩余百分比，例如 5 小时、每周、30 天；单个窗口在原气泡内居中，横条越满，剩余额度越多。成功查询时折叠未返回的整条窗口；查询失败会显示异常，重置时间为空时仍保留百分比。
+- **角色交互**：macOS 点角色循环切换查看额度、查看语录和打开聊天；Windows 保留原有点角色查看额度行为。
+- **Mac 聊天**：通过 Codex app-server 流式输出日常聊天回复；本地 JSON 保存最近 3 轮对话，可一键清空。聊天气泡可将选中内容加入独立的本地长期记忆，查看或删除单条；记忆会注入后续提示词，不会写入 ChatGPT 账号记忆库。人设可在应用内编辑并保存。
+- **主动聊天**：默认开启；系统连续空闲 30 分钟后可以主动发送一句轻松问候，每次至少间隔 30 分钟，每天最多 4 条。设置窗口可关闭、调整每日上限和免打扰时段（默认 23:00–08:00）。Codex 额度余量不高于 15% 或额度状态无法确认时自动暂停主动聊天，手动聊天仍可用。
 - **点气泡看语录**：再点收起，显示完成约 5 秒后也会自动收起；支持编辑自己的语录。
 - **按压与回弹**：半身角色、分段气泡动画和轻提示音，可调整音量或静音。
 - **拖动与缩放**：靠近左右边缘吸附，角色面向窗口内侧，文字保持正向。
@@ -27,7 +33,7 @@
 
 | 操作 | Windows / macOS 1.3.4 行为 |
 | --- | --- |
-| 单击、双击、连续点击角色 | 普通点击：看额度／续时；开启点击切换选项后切换语录与收起；均有按压和回弹 |
+| 单击、双击、连续点击角色 | Windows：普通额度／语录行为；Mac：额度 → 语录 → 聊天循环切换，并显示当前功能标识；均保留拖动按压反馈 |
 | 点击气泡 | 额度 → 语录 → 收起；刷新按钮单独执行刷新 |
 | 右键角色 | 原生菜单；不会把连续点击转换为设置操作 |
 | 调整大小 | 60%–250%；80%、100%、140% 预设；拖动和定位只移动窗口 |
@@ -36,6 +42,10 @@
 | Business | 个人额度优先，另显示最短时间窗口；其余窗口在详情中保留；个人额度不是公司总余额 |
 
 Mac 设置使用 SwiftUI，菜单、窗口与拖动使用 AppKit；没有运行 PowerShell、WPF 或 Windows 更新器。界面可选择跟随系统、简体中文或繁体中文，切换语言不会改写自定义语录。安装／登录启动入口、Windows MCP 插件和 Mac 聊天速度面板保持各平台现有支持范围。
+
+#### macOS 机型兼容范围
+
+Mac 安装包包含 Apple Silicon（arm64）和 Intel（x86_64）架构，最低要求 macOS 13 Ventura、Node.js 20+，以及已安装并登录的 Codex 桌面端。按 Apple 的 Ventura 兼容列表，符合系统要求的 MacBook 系列包括：MacBook Air（Retina 13 英寸，2018 年及以后）、MacBook Pro（2017 年及以后，需是 Apple 列出的 Ventura 兼容机型）、以及 MacBook（Retina 12 英寸，2017 年）。MacBook Air 2017 或更早、MacBook Pro 2016 或更早、MacBook 2016 或更早无法运行 Ventura，因此不在支持范围内。具体型号请以 [Apple 的 macOS Ventura 兼容列表](https://support.apple.com/en-us/102861)为准。架构已纳入构建，但 Intel、多屏、拖动、更新与不同系统版本尚未逐机实测；兼容声明不等于所有机型均已验证。
 
 ## 套餐适配与自动检测
 
@@ -61,12 +71,12 @@ node /Applications/GPTNiangMac.app/Contents/Resources/Backend/runtime/detect-pla
 
 两边都需要 **Node.js 20 或更新版本**，以及已安装并用 ChatGPT 账号登录的 **Codex 桌面端**。下载包不附带 Node.js；缺少时请先从 [Node.js 官方网站](https://nodejs.org/) 安装。
 
-在 [Release 下载页](https://github.com/T7moris/GPT-Niang/releases/latest) 的 **Assets** 中选择自己的系统：
+在本 fork 的 [Release 下载页](https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest) 的 **Assets** 中选择自己的系统。此 fork 当前先发布源码；等本仓库发布自己的安装包和校验文件后，再从这里下载。上游 Release 包不包含本 fork 的定制改动：
 
 | 系统 | v1.3.4 安装包 | 安装入口 |
 | --- | --- | --- |
-| Windows 10 / 11 | [gpt-niang-usage-widget-v1.3.4-windows.zip](https://github.com/T7moris/GPT-Niang/releases/download/v1.3.4/gpt-niang-usage-widget-v1.3.4-windows.zip) | 解压后运行 `安装GPT娘.cmd` |
-| macOS 13+，Apple Silicon / Intel | [gpt-niang-usage-widget-v1.3.4-macos-universal.zip](https://github.com/T7moris/GPT-Niang/releases/download/v1.3.4/gpt-niang-usage-widget-v1.3.4-macos-universal.zip) | 解压后打开 `GPTNiangMac.app` |
+| Windows 10 / 11 | 本 fork 暂无定制版安装包 | 等待此 fork 发布 Windows 包 |
+| macOS 13+，Apple Silicon / Intel | 本 fork 暂无新 Release 包 | 从源码构建；发布安装包后从本 fork 下载 |
 
 GitHub 自动附带的 **Source code** 和 **Code → Download ZIP** 是源码，不是上述安装包。Mac 下载包内已包含通用应用，不需要 Swift 或 Xcode；Intel 和较旧 macOS 的实际界面表现仍需真机验证。尚无 Linux 版本。
 
@@ -91,7 +101,7 @@ Mac 的位置跟随目标为 60 Hz，仍使用轮询，不能保证拖动时零�
 
 ### 安装包校验（建议）
 
-同一 [v1.3.4 Release](https://github.com/T7moris/GPT-Niang/releases/tag/v1.3.4) 的 **[SHA256SUMS.txt](https://github.com/T7moris/GPT-Niang/releases/download/v1.3.4/SHA256SUMS.txt)** 包含两个包的校验值。下载后计算自己的安装包哈希，与文件中**同名文件**的一行比较。
+同一 [v1.3.4 Release](https://github.com/Calvin-bot-ui/GPT-Niang/releases/tag/v1.3.4) 的 **[SHA256SUMS.txt](https://github.com/Calvin-bot-ui/GPT-Niang/releases/download/v1.3.4/SHA256SUMS.txt)** 包含两个包的校验值。下载后计算自己的安装包哈希，与文件中**同名文件**的一行比较。
 
 Windows，在 PowerShell 中运行：
 
@@ -113,11 +123,11 @@ shasum -a 256 gpt-niang-usage-widget-v1.3.4-macos-universal.zip
 
 **Windows：**
 
-> 从 https://github.com/T7moris/GPT-Niang/releases/latest 下载 Windows 安装包与 SHA256SUMS.txt，先核对来源和哈希，再完整解压到长期保留的位置（例如 `%LOCALAPPDATA%\Programs\GPTNiangUsage`），运行 `安装GPT娘.cmd` 并告诉我结果。先检查 Node.js 20+ 和 Codex 的 ChatGPT 登录状态。
+> 从 https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest 下载 Windows 安装包与 SHA256SUMS.txt，先核对来源和哈希，再完整解压到长期保留的位置（例如 `%LOCALAPPDATA%\Programs\GPTNiangUsage`），运行 `安装GPT娘.cmd` 并告诉我结果。先检查 Node.js 20+ 和 Codex 的 ChatGPT 登录状态。
 
 **macOS：**
 
-> 从 https://github.com/T7moris/GPT-Niang/releases/latest 下载 macOS 通用安装包与 SHA256SUMS.txt，先核对来源和哈希，再解压并将 `GPTNiangMac.app` 放入「应用程序」。检查 Node.js 20+ 和 Codex 的 ChatGPT 登录状态，打开应用并告诉我结果。若系统要求首次打开确认，请告诉我具体提示，由我在系统设置中确认。
+> 从 https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest 下载 macOS 通用安装包与 SHA256SUMS.txt，先核对来源和哈希，再解压并将 `GPTNiangMac.app` 放入「应用程序」。检查 Node.js 20+ 和 Codex 的 ChatGPT 登录状态，打开应用并告诉我结果。若系统要求首次打开确认，请告诉我具体提示，由我在系统设置中确认。
 
 ## 使用
 
