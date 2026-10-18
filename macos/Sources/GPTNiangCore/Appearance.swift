@@ -15,6 +15,29 @@ public enum ColorMode: String, CaseIterable, Codable {
     }
 }
 public enum ColorScope: String { case none, text, full }
+public enum CharacterAction: Int, CaseIterable {
+    case quota, quote, chat
+
+    public var title: String {
+        switch self {
+        case .quota: return "查看额度"
+        case .quote: return "查看语录"
+        case .chat: return "打开聊天"
+        }
+    }
+
+    public var symbol: String {
+        switch self {
+        case .quota: return "chart.bar.fill"
+        case .quote: return "quote.bubble.fill"
+        case .chat: return "bubble.left.and.bubble.right.fill"
+        }
+    }
+
+    public var next: CharacterAction { Self.allCases[(rawValue + 1) % Self.allCases.count] }
+    public var closesChatWindow: Bool { self != .chat }
+}
+
 public enum Appearance {
     public static func scope(mode: ColorMode, quote: String?, special: [String], fullChance: Double, textChance: Double, draw: Double) -> ColorScope {
         if mode == .original { return .none }
