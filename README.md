@@ -2,7 +2,7 @@
 
 > **个人 fork / 衍生版本**：上游项目由 [T7moris](https://github.com/T7moris) 创建并维护，源仓库为 [T7moris/GPT-Niang](https://github.com/T7moris/GPT-Niang)。本 fork 由 [Calvin-bot-ui](https://github.com/Calvin-bot-ui) 维护，保留上游 MIT 代码许可证、版权声明及角色素材和语录的独立许可说明。这里列出的定制功能由 fork 维护者在上游基础上开发；不代表上游作者背书。
 
-本 fork 的主要改动：macOS GPT 娘新增 Codex 桌面聊天和流式回复、本地短期聊天记录与长期记忆、人设编辑面板、额度／语录／聊天循环切换、主动闲聊（每日最多 4 次、免打扰时段及额度保护），并在聊天生成时阻止自动更新打断回复。具体功能以本仓库代码和 [macOS 使用说明](macos/README.md) 为准。发布安装包前请先通过本 fork 的 GitHub Releases 发布经过验证的资产；在此之前，本仓库提供的是源码。
+本 fork 的主要改动：macOS GPT 娘新增 Codex 桌面聊天和流式回复、本地短期聊天记录与长期记忆、人设编辑面板、额度／语录／聊天循环切换、主动闲聊（每日最多 4 次、免打扰时段及额度保护），并在聊天生成时阻止自动更新打断回复。具体功能以本仓库代码和 [macOS 使用说明](macos/README.md) 为准。已通过本 fork 的 GitHub Actions 构建并发布 Windows 与 macOS 安装包；下载项和校验文件见 [最新版 Release](https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest)。
 
 让一只白发紫瞳的小龙娘，陪你看 Codex 的剩余额度。
 
@@ -71,12 +71,12 @@ node /Applications/GPTNiangMac.app/Contents/Resources/Backend/runtime/detect-pla
 
 两边都需要 **Node.js 20 或更新版本**，以及已安装并用 ChatGPT 账号登录的 **Codex 桌面端**。下载包不附带 Node.js；缺少时请先从 [Node.js 官方网站](https://nodejs.org/) 安装。
 
-在本 fork 的 [Release 下载页](https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest) 的 **Assets** 中选择自己的系统。此 fork 当前先发布源码；等本仓库发布自己的安装包和校验文件后，再从这里下载。上游 Release 包不包含本 fork 的定制改动：
+从本 fork 的 [最新版 Release](https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest) 的 **Assets** 下载对应系统安装包与 `SHA256SUMS.txt`。请使用本 fork 的包；上游 Release 不包含这里的定制改动：
 
 | 系统 | v1.3.4 安装包 | 安装入口 |
 | --- | --- | --- |
-| Windows 10 / 11 | 本 fork 暂无定制版安装包 | 等待此 fork 发布 Windows 包 |
-| macOS 13+，Apple Silicon / Intel | 本 fork 暂无新 Release 包 | 从源码构建；发布安装包后从本 fork 下载 |
+| Windows 10 / 11 | `gpt-niang-usage-widget-v1.3.4-windows.zip` | 完整解压后运行根目录的 `安装GPT娘.cmd` |
+| macOS 13+，Apple Silicon / Intel | `gpt-niang-usage-widget-v1.3.4-macos-universal.zip` | 解压后将 `GPTNiangMac.app` 移入「应用程序」 |
 
 GitHub 自动附带的 **Source code** 和 **Code → Download ZIP** 是源码，不是上述安装包。Mac 下载包内已包含通用应用，不需要 Swift 或 Xcode；Intel 和较旧 macOS 的实际界面表现仍需真机验证。尚无 Linux 版本。
 
