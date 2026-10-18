@@ -4,8 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - .github/workflows/release.yml
-      - README.md
       - macos/**
       - script/**
       - gpt-niang-usage/runtime/**
