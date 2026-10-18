@@ -42,11 +42,11 @@ public struct SelectedRelease {
 }
 public enum UpdatePolicy {
     public static let bundleID = "io.github.t7moris.GPTNiangMac"
-    public static let api = URL(string: "https://api.github.com/repos/T7moris/GPT-Niang/releases/latest")!
+    public static let api = URL(string: "https://api.github.com/repos/Calvin-bot-ui/GPT-Niang/releases/latest")!
     public static let maximumArchive = 50 * 1024 * 1024
     public static let maximumExpanded = 200 * 1024 * 1024
     public static let day: TimeInterval = 86400
-    private static let releasePath = "/T7moris/GPT-Niang/releases/download/"
+    private static let releasePath = "/Calvin-bot-ui/GPT-Niang/releases/download/"
     public static func allowed(_ url: URL, apiOnly: Bool = false) -> Bool {
         guard url.scheme == "https", url.user == nil, url.password == nil, url.port == nil, url.fragment == nil else { return false }
         if apiOnly { return url == api }
