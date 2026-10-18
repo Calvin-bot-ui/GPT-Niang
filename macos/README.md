@@ -14,16 +14,20 @@ window following, native pointer capture, and menu bar entry.
 
 ## Requirements
 
-- macOS 13 or newer. The release includes arm64 and x86_64 slices; actual GUI behavior on Intel and older macOS still needs verification.
+- macOS 13 Ventura or newer. The release includes arm64 and x86_64 slices. This covers Apple Silicon and Intel architectures, but the app has not been GUI-tested on every Mac model.
 - Node.js 20 or newer (no npm dependencies).
 - Codex desktop installed and signed in with a ChatGPT account.
 - Source builds only: Xcode command-line tools / Swift 5.9 or newer. The release app does not need Xcode or Swift.
+
+### MacBook model coverage
+
+The minimum OS requirement means supported MacBook families are MacBook Air (Retina, 13-inch, 2018 or later), MacBook Pro (2017 or later models that Apple lists as Ventura-compatible), and MacBook (Retina, 12-inch, 2017). These include both Intel and Apple Silicon machines in the listed range. MacBook Air (2017 or earlier), MacBook Pro (2016 or earlier), and MacBook (2016 or earlier) cannot run macOS Ventura and are outside this app's supported range. Check Apple's [macOS Ventura compatibility list](https://support.apple.com/en-us/102861) for exact model variants. Architecture slices are present, but Intel GUI behavior and individual models are not all hardware-tested; users also need Node.js 20+ and a signed-in Codex desktop app.
 
 If a CommandLineTools-only source build reports a missing SwiftUI macro plugin, `GPT_NIANG_SDK=/path/to/compatible/MacOSX.sdk ./script/build_and_run.sh --build-only` forwards the selected SDK to Swift. The default build and deployment target are unchanged. This build compatibility change is retained from [PR #8](https://github.com/T7moris/GPT-Niang/pull/8).
 
 ## Install the release
 
-Download `gpt-niang-usage-widget-v1.3.4-macos-universal.zip` from the [GitHub Release](https://github.com/T7moris/GPT-Niang/releases/latest), verify its entry in `SHA256SUMS.txt`, unzip, and move `GPTNiangMac.app` to Applications before opening. Node.js 20+ and a signed-in Codex desktop app are required; Swift/Xcode is needed only for source builds.
+Download `gpt-niang-usage-widget-v1.3.4-macos-universal.zip` from this fork's [GitHub Releases](https://github.com/Calvin-bot-ui/GPT-Niang/releases/latest), verify its entry in `SHA256SUMS.txt`, unzip, and move `GPTNiangMac.app` to Applications before opening. Node.js 20+ and a signed-in Codex desktop app are required; Swift/Xcode is needed only for source builds. Until this fork publishes its own release assets, use the source build instructions below; upstream release binaries do not contain this fork's custom changes.
 
 The release is ad-hoc signed, not Developer ID signed or notarized. If macOS blocks the first launch, after checking the source and checksum follow [Apple’s instructions](https://support.apple.com/102445) in System Settings → Privacy & Security → Open Anyway.
 
@@ -53,17 +57,37 @@ Passing `--speed` after a run mode opens the separate speed panel at launch.
 You can keep the `.app` in a permanent location and open it directly. The local
 build is ad-hoc signed, not Apple notarized; Developer ID signing and notarization
 are not provided in this release. The app finds the desktop's bundled Codex CLI on each
-refresh and supports `GPT_NIANG_CODEX_APP` for a nonstandard Codex app location.
+refresh, including the CLI shipped inside ChatGPT.app, and supports `GPT_NIANG_CODEX_APP`
+for a nonstandard Codex app location. `CODEX_CLI_PATH` is also honored when provided by the app environment.
 `GPT_NIANG_NODE` can select a custom Node executable.
 
 ## Interaction
 
-- Click the character to show quota. Both quota and quotes hide five seconds after
+- Each character click cycles through quota, quote and chat, then returns to quota.
+  A small icon on the character shows the selected function. The existing context menu
+  and menu bar remain available. Chat uses the local Codex app-server
+  with GPT-6 Luna with reasoning disabled and streams reply deltas into the native window.
+- Chat history is stored in `~/Library/Application Support/GPTNiangUsage/chat-history.json`
+  and limited to the latest three exchanges. The chat window loads those exchanges and
+  includes a clear-history button. The “编辑人设” button opens
+  `~/Library/Application Support/GPTNiangUsage/chat-persona.json`, a structured JSON
+  persona with identity, background, personality, tone, response style, preferences,
+  boundaries and extra instructions. Changes apply to the next message. Existing
+  custom freeform persona instructions remain supported. The default persona allows
+  a few natural sentences for casual chat and can elaborate when a question needs it.
+- The menu bar “设置…” window contains a “主动聊天” group; the sliders icon in the chat
+  window opens the same settings. Proactive chat is on by default, waits for 30 minutes
+  of system-wide inactivity, has a 30-minute minimum interval and a hard daily limit of
+  three. The local-time quiet period defaults to 23:00–08:00 and can be changed there.
+  The scheduler pauses while any Codex quota window is at or below 15%, or when quota
+  data is stale or unavailable; manual chat remains available. Codex exposes shared
+  quota windows here, not a Luna-only meter.
+- Both quota and quote bubbles hide five seconds after
   their reveal animation completes, matching the original.
 - Click the quota cloud to see a quote; click the quote cloud to close it.
 - Drag the character to reposition it. It snaps near the left/right edges and
   faces inward; the text remains upright.
-- Single, double and rapid clicks use the ordinary quota/quote action.
+- Single, double and rapid clicks all advance the same cycle; dragging and right-click behavior are unchanged.
   Right-click opens the native menu; the hover button and menu bar provide settings.
 - Settings include scale, audio, quote editing, the original color modes, random
   color probabilities, flow pause, special quote triggers, and click-to-advance.
