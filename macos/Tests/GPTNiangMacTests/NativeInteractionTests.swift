@@ -4,6 +4,28 @@ import GPTNiangCore
 @testable import GPTNiangMac
 
 final class NativeInteractionTests: XCTestCase {
+    func testPersonaEditorMapsStructuredFieldsAndListLines() {
+        let draft = PersonaDraft.from(["name": "小星", "personality": ["温柔", "耐心"], "instructions": "补充要求"])
+        XCTAssertEqual(draft.name, "小星")
+        XCTAssertEqual(draft.personality, "温柔\n耐心")
+        XCTAssertEqual(draft.additionalInstructions, "补充要求")
+        let saved = draft.json()
+        XCTAssertEqual(saved["personality"] as? [String], ["温柔", "耐心"])
+        XCTAssertEqual(saved["additionalInstructions"] as? String, "补充要求")
+    }
+
+    @MainActor func testCharacterClickCycleStartsAtQuotaThenReturnsAfterChat() async throws {
+        let data = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: data) }
+        let model = WidgetModel(dataDirectory: data, resources: data)
+        XCTAssertNil(model.characterAction)
+        XCTAssertEqual(model.advanceCharacterAction(), .quota)
+        XCTAssertEqual(model.characterAction, .quota)
+        XCTAssertEqual(model.advanceCharacterAction(), .quote)
+        XCTAssertEqual(model.advanceCharacterAction(), .chat)
+        XCTAssertEqual(model.advanceCharacterAction(), .quota)
+    }
+
     @MainActor func testLegacyDesktopPositionMigratesOnceWithoutLosingFollowOrUnknownPreferences() async throws {
         let data = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: data, withIntermediateDirectories: true)
