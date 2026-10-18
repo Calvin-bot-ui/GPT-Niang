@@ -30,7 +30,7 @@ final class UpdateTests: XCTestCase {
     }
     private func release(_ tag: String = "v1.3.3", prerelease: Bool = false, repository: String = "GPT-Niang") throws -> OfficialRelease {
         let name = "gpt-niang-usage-widget-\(tag)-macos-universal.zip"
-        let assets = [name, "SHA256SUMS.txt"].map { ["name": $0, "browser_download_url": "https://github.com/T7moris/\(repository)/releases/download/\(tag)/\($0)", "size": 20] as [String: Any] }
+        let assets = [name, "SHA256SUMS.txt"].map { ["name": $0, "browser_download_url": "https://github.com/Calvin-bot-ui/\(repository)/releases/download/\(tag)/\($0)", "size": 20] as [String: Any] }
         return try JSONDecoder().decode(OfficialRelease.self, from: JSONSerialization.data(withJSONObject: ["tag_name": tag, "draft": false, "prerelease": prerelease, "assets": assets]))
     }
     func testStableVersionsAndOfficialMacAsset() throws {
@@ -40,8 +40,8 @@ final class UpdateTests: XCTestCase {
         XCTAssertNil(try UpdatePolicy.select(release(), current: "1.3.3"))
         XCTAssertNil(try UpdatePolicy.select(release(prerelease: true), current: "1.3.2"))
         XCTAssertThrowsError(try UpdatePolicy.select(release(repository: "foreign"), current: "1.3.2"))
-        XCTAssertFalse(UpdatePolicy.allowed(URL(string: "https://github.com.evil.test/T7moris/GPT-Niang/releases/download/v1.3.3/file")!))
-        XCTAssertFalse(UpdatePolicy.allowed(URL(string: "http://github.com/T7moris/GPT-Niang/releases/download/v1.3.3/file")!))
+        XCTAssertFalse(UpdatePolicy.allowed(URL(string: "https://github.com.evil.test/Calvin-bot-ui/GPT-Niang/releases/download/v1.3.3/file")!))
+        XCTAssertFalse(UpdatePolicy.allowed(URL(string: "http://github.com/Calvin-bot-ui/GPT-Niang/releases/download/v1.3.3/file")!))
     }
     func testChecksumAndGitHubDigestMustAgree() throws {
         let bytes = Data("abc".utf8); let hash = UpdatePolicy.hash(bytes)
