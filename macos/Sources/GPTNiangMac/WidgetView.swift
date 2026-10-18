@@ -2,6 +2,10 @@ import SwiftUI
 import AppKit
 import GPTNiangCore
 
+extension Notification.Name {
+    static let gptNiangOpenChat = Notification.Name("GPTNiangOpenChat")
+}
+
 // Coordinates, colors and timing are taken from widget.xaml/widget.ps1 (v1.2.5).
 struct WidgetView: View {
     @ObservedObject var model: WidgetModel
@@ -92,6 +96,20 @@ struct WidgetView: View {
                     if model.colorScope == .full { Rectangle().fill(style("accent", phase: phase)).mask(girl).opacity(0.34).allowsHitTesting(false) }
                 }
                 .frame(width: 208, height: 208).contentShape(Rectangle())
+                .overlay(alignment: .topTrailing) {
+                    if let action = model.characterAction {
+                        Image(systemName: action.symbol)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(ink)
+                            .frame(width: 25, height: 25)
+                            .background(Color.white.opacity(0.92), in: Circle())
+                            .overlay(Circle().stroke(ink.opacity(0.28), lineWidth: 1))
+                            .shadow(color: ink.opacity(0.12), radius: 3, y: 1)
+                            .offset(x: -8, y: 8)
+                            .help(model.text(action.title))
+                            .accessibilityHidden(true)
+                    }
+                }
                 .overlay(CharacterInteraction(onPress: { down in
                     model.interactionActive = down
                     withAnimation(reduceMotion ? nil : rebound) { pressed = down }
@@ -99,10 +117,10 @@ struct WidgetView: View {
                 }, onDrag: { translation in
                     onDrag(translation)
                     if translation == .zero { model.savePreferences() }
-                }, onClick: { model.characterClick() }, onMenu: onContextMenu))
+                }, onClick: { NotificationCenter.default.post(name: .gptNiangOpenChat, object: nil) }, onMenu: onContextMenu))
                 .onHover { hovering = $0 }.offset(x: 142, y: 142)
-                .accessibilityElement().accessibilityLabel(model.text("GPT 娘：點擊查看額度，拖動調整位置"))
-                .accessibilityAddTraits(.isButton).accessibilityAction { model.characterClick() }
+                .accessibilityElement().accessibilityLabel(model.text("GPT 娘：單擊循環查看額度、語錄和聊天，拖動調整位置"))
+                .accessibilityAddTraits(.isButton).accessibilityAction { NotificationCenter.default.post(name: .gptNiangOpenChat, object: nil) }
             }
             if hovering && !model.hideMenu {
                 Button(action: onSettings) { Image(systemName: "line.3.horizontal").font(.system(size: 15)).foregroundStyle(ink).frame(width: 24, height: 24).background(Color(hex: "EDE7F6"), in: RoundedRectangle(cornerRadius: 6)) }

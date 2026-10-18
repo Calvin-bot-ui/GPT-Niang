@@ -26,6 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var panel: NSPanel!
     private var settingsWindow: NSWindow?
     private var speedWindow: NSWindow?
+    private var chatWindow: NSWindow?
+    private var chatModel: ChatViewModel?
+    private var proactiveTimer: Timer?
+    private var proactiveQuotaRefreshAt = Date.distantPast
     private let speedStore = ThreadSpeedStore()
     private var statusItem: NSStatusItem?
     private var timer: Timer?
@@ -65,10 +69,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         guard let resources = Bundle.main.resourceURL else { NSApp.terminate(nil); return }
         diagnosticsURL = argument("--diagnostics").map { URL(fileURLWithPath: $0) }
         model = WidgetModel(dataDirectory: dataDirectory, resources: resources)
+        chatModel = ChatViewModel(model: model)
+        chatModel?.onProactiveMessage = { [weak self] text in self?.model.showProactiveMessage(text) }
+        NotificationCenter.default.addObserver(forName: .gptNiangOpenChat, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                let action = self.model.advanceCharacterAction()
+                if action.closesChatWindow { self.closeChatWindow() }
+                switch action {
+                case .quota: self.model.showQuota()
+                case .quote: self.model.showQuote()
+                case .chat: self.showChat()
+                }
+            }
+        }
         updater = NativeUpdater(data: dataDirectory, idle: { [weak self] in
             guard let self else { return false }
             return self.dragOrigin == nil && self.trackingMenus == 0 && self.settingsWindow?.isVisible != true &&
-                self.speedWindow?.isVisible != true && self.model.updateIdle
+                self.speedWindow?.isVisible != true && self.chatWindow?.isVisible != true &&
+                self.chatModel?.busy != true && self.model.updateIdle
         }, terminate: { NSApp.terminate(nil) })
         panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 378, height: 378),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -90,6 +109,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         // Keep following while AppKit is tracking a pointer or menu.
         RunLoop.main.add(followTimer, forMode: .common)
         timer = followTimer
+        let proactiveTimer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.checkProactiveChat() }
+        }
+        RunLoop.main.add(proactiveTimer, forMode: .common)
+        self.proactiveTimer = proactiveTimer
         if args.contains("--speed") { showSpeed() }
         updater.start()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -98,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         logger.info("macOS widget launched")
     }
     func applicationWillTerminate(_ notification: Notification) {
-        timer?.invalidate(); updater?.stop(); model?.stop(); speedStore.stop()
+        timer?.invalidate(); proactiveTimer?.invalidate(); updater?.stop(); model?.stop(); speedStore.stop(); chatModel?.stop()
         if lockDescriptor >= 0 { Darwin.close(lockDescriptor) }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
@@ -112,13 +136,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func windowWillClose(_ notification: Notification) {
         if let window = notification.object as? NSWindow {
             if window === speedWindow { speedStore.stop() }
-            if window === settingsWindow || window === speedWindow { NSApp.setActivationPolicy(.accessory) }
+            if (window === settingsWindow || window === speedWindow || window === chatWindow) &&
+                settingsWindow?.isVisible != true && speedWindow?.isVisible != true && chatWindow?.isVisible != true {
+                NSApp.setActivationPolicy(.accessory)
+            }
         }
     }
     private func localizeWindowTitles() {
         panel?.title = model.text("GPT 娘額度掛件")
         settingsWindow?.title = model.text("GPT 娘設定")
         speedWindow?.title = model.text("GPT 娘 · 聊天速度")
+        chatWindow?.title = "GPT 娘 · 聊天"
     }
     private func buildMenu() {
         if statusItem == nil { statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength) }
@@ -153,9 +181,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         menu.delegate = self
         NSMenu.popUpContextMenu(menu, with: event, for: view)
     }
-    @objc private func showQuota() { model.toggleQuota(); updateWindow() }
+    @objc private func showQuota() { closeChatWindow(); model.toggleQuota(); updateWindow() }
+    private func closeChatWindow() { chatWindow?.close() }
+    private func showChat() {
+        if chatWindow == nil {
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 620), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            let viewModel = chatModel ?? ChatViewModel(model: model)
+            chatModel = viewModel
+            window.title = "GPT 娘 · 聊天"; window.isReleasedWhenClosed = false; window.delegate = self
+            window.contentView = NSHostingView(rootView: ChatWindowView(model: viewModel, widgetModel: model, onOpenSettings: { [weak self] in self?.showSettings() }))
+            window.center(); chatWindow = window; chatModel = viewModel
+        }
+        NSApp.setActivationPolicy(.regular); NSApp.activate(ignoringOtherApps: true)
+        chatWindow?.makeKeyAndOrderFront(nil)
+    }
+    private func checkProactiveChat(now: Date = Date()) {
+        model.refreshProactiveDay(at: now)
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: now)
+        let minuteOfDay = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+        let sinceLast = model.proactiveLastAt.map { now.timeIntervalSince1970 - $0 }
+        let chatBusy = (chatModel?.busy ?? false) || !model.updateIdle
+        let chatVisible = chatWindow?.isVisible == true
+        let settingsVisible = settingsWindow?.isVisible == true
+        let speedVisible = speedWindow?.isVisible == true
+        let isReadyApartFromQuota = ProactiveChatPolicy.shouldSend(
+            enabled: model.proactiveEnabled, dailyCount: model.proactiveCountToday, dailyLimit: model.proactiveDailyLimit,
+            idleFor: systemIdleDuration(), sinceLastMessage: sinceLast, minuteOfDay: minuteOfDay,
+            quietStart: model.proactiveQuietStartMinutes, quietEnd: model.proactiveQuietEndMinutes,
+            quotaSafe: true, chatBusy: chatBusy, chatVisible: chatVisible,
+            settingsVisible: settingsVisible, speedVisible: speedVisible)
+        guard isReadyApartFromQuota else { return }
+        guard model.proactiveQuotaSafe else {
+            if now.timeIntervalSince(proactiveQuotaRefreshAt) >= 120 {
+                proactiveQuotaRefreshAt = now; model.refresh()
+            }
+            return
+        }
+        guard ProactiveChatPolicy.shouldSend(
+            enabled: model.proactiveEnabled, dailyCount: model.proactiveCountToday, dailyLimit: model.proactiveDailyLimit,
+            idleFor: systemIdleDuration(), sinceLastMessage: sinceLast, minuteOfDay: minuteOfDay,
+            quietStart: model.proactiveQuietStartMinutes, quietEnd: model.proactiveQuietEndMinutes,
+            quotaSafe: true, chatBusy: chatBusy, chatVisible: chatVisible,
+            settingsVisible: settingsVisible, speedVisible: speedVisible),
+              chatModel?.sendProactive() == true else { return }
+        model.recordProactiveAttempt(at: now)
+    }
+    private func systemIdleDuration() -> TimeInterval {
+        let types: [CGEventType] = [.mouseMoved, .leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown, .flagsChanged, .scrollWheel]
+        let ages = types.map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }
+            .filter { $0.isFinite && $0 >= 0 }
+        return ages.min() ?? 0
+    }
     @objc private func refresh() { model.refresh() }
-    @objc private func quote() { model.showQuote() }
+    @objc private func quote() { closeChatWindow(); model.showQuote() }
     @objc private func checkUpdate() { showSettings(); updater.check(manual: true) }
     @objc private func showSettings() {
         if settingsWindow == nil {

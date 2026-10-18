@@ -20,6 +20,7 @@ struct SettingsView: View {
             section3
             section4
             section5
+            section6
             if let error = model.settingsError { Text(error).font(.caption).foregroundStyle(.orange) }
             HStack {
                 Button(model.text("開啟資料目錄")) { NSWorkspace.shared.open(model.dataDirectory) }
@@ -44,6 +45,8 @@ struct SettingsView: View {
         .onChange(of: model.specialQuotes) { _ in model.updateAppearance(); model.savePreferences() }
         .onChange(of: model.bubbleTapAdvance) { _ in model.savePreferences() }
         .onChange(of: model.followCodex) { _ in model.savePreferences() }
+        .onChange(of: model.proactiveEnabled) { _ in model.savePreferences() }
+        .onChange(of: model.proactiveDailyLimit) { _ in model.savePreferences() }
     }
 
     private var section1: some View {
@@ -136,5 +139,37 @@ struct SettingsView: View {
                     }
                 }.padding(10)
             }
+    }
+
+    private var section6: some View {
+        GroupBox(model.text("主动聊天")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(model.text("桌宠闲置时主动聊一句"), isOn: $model.proactiveEnabled)
+                Stepper(model.text("每日最多 %@ 条（今天 %@/%@）", String(model.proactiveDailyLimit), String(model.proactiveCountToday), String(model.proactiveDailyLimit)),
+                        value: $model.proactiveDailyLimit, in: 1...4)
+                DatePicker(model.text("免打扰开始"), selection: quietStartBinding, displayedComponents: .hourAndMinute)
+                DatePicker(model.text("免打扰结束"), selection: quietEndBinding, displayedComponents: .hourAndMinute)
+                Text(model.text("系统连续空闲 30 分钟后才会触发；两次至少间隔 30 分钟。Codex 额度余量不高于 15% 或额度状态无法确认时，主动聊天会暂停，手动聊天仍可用。当前状态：%@", model.proactiveQuotaStatus))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(model.text("免打扰时段按这台 Mac 的本地时间计算；开始和结束相同表示关闭免打扰。"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }.padding(10)
+        }
+    }
+
+    private var quietStartBinding: Binding<Date> {
+        Binding(get: { date(forMinutes: model.proactiveQuietStartMinutes) }, set: { model.proactiveQuietStartMinutes = minutes(of: $0); model.savePreferences() })
+    }
+    private var quietEndBinding: Binding<Date> {
+        Binding(get: { date(forMinutes: model.proactiveQuietEndMinutes) }, set: { model.proactiveQuietEndMinutes = minutes(of: $0); model.savePreferences() })
+    }
+    private func date(forMinutes value: Int) -> Date {
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = value / 60; components.minute = value % 60
+        return Calendar.current.date(from: components) ?? Date()
+    }
+    private func minutes(of date: Date) -> Int {
+        let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+        return (components.hour ?? 0) * 60 + (components.minute ?? 0)
     }
 }

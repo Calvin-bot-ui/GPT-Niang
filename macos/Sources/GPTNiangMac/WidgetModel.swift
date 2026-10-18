@@ -35,6 +35,14 @@ final class WidgetModel: ObservableObject {
     @Published var settingsError: String?
     @Published var refreshing = false
     @Published var trackingNote: String?
+    @Published var characterAction: CharacterAction?
+    @Published var proactiveEnabled: Bool
+    @Published var proactiveDailyLimit: Int
+    @Published var proactiveQuietStartMinutes: Int
+    @Published var proactiveQuietEndMinutes: Int
+    @Published private(set) var proactiveCountToday: Int
+    @Published private(set) var proactiveLastAt: Double?
+    private var proactiveCountDay: String
     var interactionActive = false
     let dataDirectory: URL
     let resources: URL
@@ -47,6 +55,19 @@ final class WidgetModel: ObservableObject {
         let file = dataDirectory.appendingPathComponent("worker-status.json")
         let status = (try? Data(contentsOf: file)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
         return status?["busy"] as? Bool != true
+    }
+    var proactiveQuotaSafe: Bool {
+        ProactiveChatPolicy.quotaIsSafe(remaining: snapshot.validWindows.map(\.remaining),
+                                        verified: snapshot.ok && snapshot.queryOk == true && !snapshot.stale(at: Date()))
+    }
+    var proactiveQuotaStatus: String {
+        guard snapshot.ok, snapshot.queryOk == true, !snapshot.stale(at: Date()), !snapshot.validWindows.isEmpty else {
+            return "额度数据暂不可确认，主动聊天暂时暂停。"
+        }
+        if !proactiveQuotaSafe, snapshot.validWindows.map(\.remaining).min().map({ $0 <= ProactiveChatPolicy.quotaPauseThreshold }) == true {
+            return "Codex 额度余量不高于 15%，主动聊天已自动暂停。"
+        }
+        return "额度充足；连续空闲 30 分钟后可主动聊天。"
     }
     private var stderr: FileHandle?
     private var timer: Timer?
@@ -82,6 +103,13 @@ final class WidgetModel: ObservableObject {
         desktopBottom = values["desktopBottom"] as? Double
         soundOn = values["soundOn"] as? Bool ?? true
         hideMenu = values["hideMenu"] as? Bool ?? false
+        proactiveEnabled = values["proactiveEnabled"] as? Bool ?? true
+        proactiveDailyLimit = min(4, max(1, values["proactiveDailyLimit"] as? Int ?? 4))
+        proactiveQuietStartMinutes = min(1439, max(0, values["proactiveQuietStartMinutes"] as? Int ?? 23 * 60))
+        proactiveQuietEndMinutes = min(1439, max(0, values["proactiveQuietEndMinutes"] as? Int ?? 8 * 60))
+        proactiveCountDay = values["proactiveCountDay"] as? String ?? ""
+        proactiveCountToday = values["proactiveCount"] as? Int ?? 0
+        proactiveLastAt = values["proactiveLastAt"] as? Double
         x = min(1, max(0, values["x"] as? Double ?? 1))
         y = min(1, max(0, values["y"] as? Double ?? 0))
         desktopNeedsMigration = !followCodex && desktopLeft == nil && values["layoutVersion"] == nil && !values.isEmpty
@@ -95,6 +123,13 @@ final class WidgetModel: ObservableObject {
     }
 
     func text(_ key: String, _ args: String...) -> String { language.text(key, arguments: args) }
+
+    @discardableResult
+    func advanceCharacterAction() -> CharacterAction {
+        let selected = characterAction?.next ?? .quota
+        characterAction = selected
+        return selected
+    }
 
     func start() {
         startWorker()
@@ -182,10 +217,30 @@ final class WidgetModel: ObservableObject {
         let current: [String: Any] = ["layoutVersion": 2, "scale": scale, "volume": volume, "followCodex": followCodex, "loginRequested": loginRequested, "x": x, "y": y,
             "colorMode": colorMode.rawValue, "fullChance": fullChance, "textChance": textChance, "colorPaused": colorPaused,
             "specialQuotes": specialQuotes, "bubbleTapAdvance": bubbleTapAdvance, "language": language.rawValue,
-            "desktopTopmost": desktopTopmost, "soundOn": soundOn, "hideMenu": hideMenu]
+            "desktopTopmost": desktopTopmost, "soundOn": soundOn, "hideMenu": hideMenu,
+            "proactiveEnabled": proactiveEnabled, "proactiveDailyLimit": proactiveDailyLimit,
+            "proactiveQuietStartMinutes": proactiveQuietStartMinutes, "proactiveQuietEndMinutes": proactiveQuietEndMinutes,
+            "proactiveCountDay": proactiveCountDay, "proactiveCount": proactiveCountToday]
         values.merge(current) { _, new in new }
         values["desktopLeft"] = desktopLeft; values["desktopBottom"] = desktopBottom
+        values["proactiveLastAt"] = proactiveLastAt
         try? writeJSON(values, to: file)
+    }
+    func recordProactiveAttempt(at date: Date = Date()) {
+        let day = localDayKey(date)
+        if proactiveCountDay != day { proactiveCountDay = day; proactiveCountToday = 0 }
+        proactiveCountToday += 1
+        proactiveLastAt = date.timeIntervalSince1970
+        savePreferences()
+    }
+    func refreshProactiveDay(at date: Date = Date()) {
+        let day = localDayKey(date)
+        guard proactiveCountDay != day else { return }
+        proactiveCountDay = day; proactiveCountToday = 0; savePreferences()
+    }
+    private func localDayKey(_ date: Date) -> String {
+        let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
     func migrateDesktopPosition(area: CGRect, size: CGSize) {
         guard desktopNeedsMigration else { return }
@@ -215,16 +270,20 @@ final class WidgetModel: ObservableObject {
         updateAppearance()
         restartTTL(delay: opening ? 0.52 : 0.28)
     }
+    func showProactiveMessage(_ text: String) {
+        message = text; bubble = true; updateAppearance()
+        restartTTL(delay: 0.52, duration: 12)
+    }
     func updateAppearance() {
         colorScope = Appearance.scope(mode: colorMode, quote: bubble ? message : nil,
                                       special: specialQuotes.components(separatedBy: "\n"),
                                       fullChance: fullChance, textChance: textChance, draw: Double.random(in: 0..<1))
     }
-    private func restartTTL(delay: Double) {
+    private func restartTTL(delay: Double, duration: Double = 5) {
         quoteGeneration += 1
         sceneStarted = Date().addingTimeInterval(delay)
         let generation = quoteGeneration
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay + 5) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay + duration) { [weak self] in
             guard let self, self.quoteGeneration == generation else { return }
             self.bubble = false; self.updateAppearance()
         }
