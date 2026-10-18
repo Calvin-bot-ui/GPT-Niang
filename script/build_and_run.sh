@@ -31,7 +31,7 @@ for runtime in "$ROOT_DIR/gpt-niang-usage/runtime/"*.mjs; do
   if [ "$(basename "$runtime")" != update.mjs ]; then cp "$runtime" "$APP_BUNDLE/Contents/Resources/Backend/runtime/"; fi
 done
 cp "$ROOT_DIR/gpt-niang-usage/.codex-plugin/plugin.json" "$APP_BUNDLE/Contents/Resources/Backend/.codex-plugin/"
-cp "$ROOT_DIR/gpt-niang-usage/assets/gpt-dragon-niang-bust.png" "$ROOT_DIR/gpt-niang-usage/assets/press.wav" "$ROOT_DIR/gpt-niang-usage/assets/release.wav" "$ROOT_DIR/gpt-niang-usage/assets/quotes.json" "$APP_BUNDLE/Contents/Resources/"
+cp "$ROOT_DIR/gpt-niang-usage/assets/gpt-dragon-niang-bust.png" "$ROOT_DIR/gpt-niang-usage/assets/press.wav" "$ROOT_DIR/gpt-niang-usage/assets/release.wav" "$ROOT_DIR/gpt-niang-usage/assets/quotes.json" "$ROOT_DIR/gpt-niang-usage/assets/chat-persona.json" "$APP_BUNDLE/Contents/Resources/"
 cp "$ROOT_DIR/LICENSE" "$APP_BUNDLE/Contents/Resources/LICENSE"
 cp "$ROOT_DIR/gpt-niang-usage/assets/quotes-LICENSE.txt" "$APP_BUNDLE/Contents/Resources/quotes-LICENSE.txt"
 cp "$ROOT_DIR/gpt-niang-usage/assets/CHARACTER-NOTICE.txt" "$APP_BUNDLE/Contents/Resources/CHARACTER-NOTICE.txt"
