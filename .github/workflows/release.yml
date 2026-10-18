@@ -4,6 +4,13 @@ on:
   push:
     branches: [main]
     paths:
+      - .github/workflows/release.yml
+      - README.md
+      - macos/**
+      - script/**
+      - gpt-niang-usage/runtime/**
+      - gpt-niang-usage/tests/**
+      - gpt-niang-usage/assets/chat-persona.json
       - gpt-niang-usage/package.json
       - gpt-niang-usage/.codex-plugin/plugin.json
       - gpt-niang-usage/assets/quotes.json
@@ -70,7 +77,7 @@ jobs:
         env:
           GPT_NIANG_BUILD_CONFIGURATION: release
           GPT_NIANG_BUILD_UNIVERSAL: '1'
-        run: ./script/build_and_run.sh --build-only
+        run: bash ./script/build_and_run.sh --build-only
       - name: Verify architectures, version, signature and archive
         shell: bash
         run: |
