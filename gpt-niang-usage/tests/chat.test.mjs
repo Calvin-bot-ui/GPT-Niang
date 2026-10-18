@@ -10,7 +10,11 @@ import readline from 'node:readline';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const chat = path.join(root, 'runtime/chat.mjs');
 
-test('chat streams, keeps only the latest three rounds, reads persona JSON and clears history', async t => {
+test('chat streams, keeps only the latest three rounds, reads persona JSON and clears history', {
+  // This integration fixture is a POSIX shebang executable. Windows has dedicated
+  // installer/runtime coverage and cannot launch this fixture through spawn().
+  skip: process.platform === 'win32' ? 'POSIX Codex fixture is not executable on Windows' : false,
+}, async t => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'gpt-niang-chat-'));
   t.after(() => fs.rmSync(temporary, {recursive: true, force: true}));
   const bin = path.join(temporary, 'bin'); fs.mkdirSync(bin);
