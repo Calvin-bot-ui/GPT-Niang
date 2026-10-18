@@ -67,16 +67,20 @@ export function accountFingerprint(account) {
 export function resolveCodexExecutable(configuredPath,{env=process.env,platform=process.platform}={}) {
   const isFile=file=>{try{return fs.statSync(file).isFile();}catch{return false;}};
   if(typeof configuredPath==='string' && isFile(configuredPath))return configuredPath;
+  // GUI apps launched from Finder do not inherit the shell's PATH. ChatGPT
+  // installs the Codex app-server CLI inside its own application bundle.
+  if(platform==='darwin' && typeof env.CODEX_CLI_PATH==='string' && isFile(env.CODEX_CLI_PATH))return env.CODEX_CLI_PATH;
   const executable=platform==='win32'?'codex.exe':'codex';
   if(platform==='darwin'){
     // Finder launches with a minimal PATH. Prefer the CLI shipped with the app.
     // An explicit app root also lets tests isolate themselves from real logins.
     const applications=env.GPT_NIANG_CODEX_APP?[env.GPT_NIANG_CODEX_APP]:[
       '/Applications/Codex.app',
-      ...(env.HOME?[path.join(env.HOME,'Applications','Codex.app')]:[])
+      '/Applications/ChatGPT.app',
+      ...(env.HOME?[path.join(env.HOME,'Applications','Codex.app'),path.join(env.HOME,'Applications','ChatGPT.app')]:[])
     ];
     for(const app of applications){
-      for(const relative of ['Contents/Resources/codex-cli/bin/codex','Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex','Contents/Resources/codex']){
+      for(const relative of ['Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex','Contents/Resources/codex-cli/bin/codex','Contents/Resources/codex']){
         const file=path.join(app,relative);
         if(isFile(file))return file;
       }

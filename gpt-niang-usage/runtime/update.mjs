@@ -8,8 +8,8 @@ import {fileURLToPath} from 'node:url';
 import {atomicJson} from './usage.mjs';
 
 export const DAY = 86400000;
-export const RELEASE_API = 'https://api.github.com/repos/T7moris/GPT-Niang/releases/latest';
-const RELEASE_PATH = '/T7moris/GPT-Niang/releases/download/';
+export const RELEASE_API = 'https://api.github.com/repos/Calvin-bot-ui/GPT-Niang/releases/latest';
+const RELEASE_PATH = '/Calvin-bot-ui/GPT-Niang/releases/download/';
 const MAX_ZIP = 50 * 1024 * 1024, MAX_EXPANDED = 100 * 1024 * 1024;
 const read = file => {try{return JSON.parse(fs.readFileSync(file,'utf8'));}catch{return null;}};
 const readTransaction = file => {
