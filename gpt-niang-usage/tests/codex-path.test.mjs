@@ -73,6 +73,18 @@ test('macOS falls back to the bundled signed CLI and honors a valid override',t=
   assert.equal(resolveCodexExecutable(custom,{platform:'darwin',env:{GPT_NIANG_CODEX_APP:app}}),custom);
 });
 
+test('macOS discovers the Codex app-server shipped inside ChatGPT.app from Finder',t=>{
+  const {root,write}=fixture(t);
+  const app=path.join(root,'Applications/ChatGPT.app');
+  const cli=write('Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex');
+  assert.equal(resolveCodexExecutable(undefined,{platform:'darwin',env:{GPT_NIANG_CODEX_APP:app}}),cli);
+});
+
+test('macOS honors the app-provided CODEX_CLI_PATH even without PATH',t=>{
+  const {root,write}=fixture(t);const cli=write('bundled/codex');
+  assert.equal(resolveCodexExecutable(undefined,{platform:'darwin',env:{CODEX_CLI_PATH:cli,PATH:'/usr/bin:/bin'}}),cli);
+});
+
 // This fixture uses a POSIX PATH; a Windows drive letter contains its delimiter.
 test('macOS missing-app fixtures cannot discover a real desktop account',{skip:process.platform==='win32'},t=>{
   const {root,write}=fixture(t);

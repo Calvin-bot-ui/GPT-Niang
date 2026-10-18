@@ -15,7 +15,7 @@ const worker=fileURLToPath(new URL('../runtime/watch.mjs',import.meta.url));
 // Missing-CLI fixtures must not discover the developer's installed Codex.
 function isolatedWorkerEnv(dir){
   const env={...process.env};
-  for(const key of Object.keys(env))if(['localappdata','path'].includes(key.toLowerCase()))delete env[key];
+  for(const key of Object.keys(env))if(['localappdata','path','codex_cli_path'].includes(key.toLowerCase()))delete env[key];
   return {...env,LOCALAPPDATA:dir,PATH:dir,GPT_NIANG_CODEX_APP:path.join(dir,'absent.app')};
 }
 const mockCli=[
